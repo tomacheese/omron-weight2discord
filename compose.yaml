@@ -1,0 +1,9 @@
+services:
+  omron-weight-sync:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    init: true
+    restart: unless-stopped
