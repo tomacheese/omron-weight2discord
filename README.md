@@ -35,6 +35,7 @@ python3 -m app.scheduler   # コンテナの CMD と同じくループ実行す�
 | `OMRON_CONNECT_EMAIL` | 必須 | OMRON connect のログインに使用するメールアドレス |
 | `OMRON_CONNECT_PASSWORD` | 必須 | OMRON connect のログインに使用するパスワード |
 | `DISCORD_WEBHOOK` | 任意 | 新規レコードの通知先 Discord Webhook URL。未設定の場合は通知をスキップします |
+| `SENTRY_DSN` | 任意 | エラー送信先の GlitchTip (Sentry 互換) DSN。未設定の場合はエラー送信をスキップします |
 
 ## 差分同期の仕組み
 
