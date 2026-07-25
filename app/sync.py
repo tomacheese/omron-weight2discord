@@ -9,6 +9,7 @@ from typing import Any
 
 from app import csv_store, discord_notify, state as state_mod
 from app.client import DEVICE_CATEGORY_SCALE, OmronConnectV1, parse_scale_measurement
+from app.error_reporting import init_error_reporting
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,8 @@ def main() -> int:
     """Configure logging and run a single sync pass."""
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    init_error_reporting()
+
     run_sync()
     return 0
 

@@ -1,1 +1,2 @@
 requests>=2.31
+sentry-sdk>=2.0

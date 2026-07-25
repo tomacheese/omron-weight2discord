@@ -11,6 +11,7 @@ import logging
 import os
 import time
 
+from app.error_reporting import init_error_reporting
 from app.sync import run_sync
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ def main() -> int:
     """Run the sync immediately, then repeat every INTERVAL_SECONDS forever."""
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    init_error_reporting()
+
     logger.info("Starting scheduler loop (interval=%ds).", INTERVAL_SECONDS)
 
     while True:
