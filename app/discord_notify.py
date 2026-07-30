@@ -50,14 +50,14 @@ def _build_embed(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_payload(new_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build the full webhook payload: one embed per record, most recent first.
+    """Build the full webhook payload: one embed per record.
 
-    Only the MAX_SHOWN_RECORDS most recent records get their own embed; if
-    more were synced, a plain-text note on the omitted count is added.
+    Assumes `new_rows` is already sorted ascending (oldest first), as
+    `sync.run_sync` guarantees; this function does not sort it itself.
     """
 
     shown = new_rows[-MAX_SHOWN_RECORDS:]
-    payload: dict[str, Any] = {"embeds": [_build_embed(row) for row in reversed(shown)]}
+    payload: dict[str, Any] = {"embeds": [_build_embed(row) for row in shown]}
 
     omitted = len(new_rows) - len(shown)
     if omitted > 0:
