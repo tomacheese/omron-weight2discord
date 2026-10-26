@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from app import csv_store, discord_notify, state as state_mod
+from app import csv_store, discord_notify, outbox, state as state_mod
 from app.client import DEVICE_CATEGORY_SCALE, OmronConnectV1, parse_scale_measurement
 from app.error_reporting import init_error_reporting
 
@@ -51,6 +51,7 @@ def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str
     data_dir = data_dir or DEFAULT_DATA_DIR
     csv_path = data_dir / "weight_data.csv"
     state_path = data_dir / "state.json"
+    outbox_path = data_dir / "outbox.json"
 
     env = get_config()
     email = env.get("OMRON_CONNECT_EMAIL")
@@ -110,6 +111,13 @@ def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str
 
     new_rows.sort(key=lambda r: r["measured_at_utc"])
 
+    use_outbox = notify and bool(webhook_url)
+    if use_outbox and new_rows:
+        # CSV 追記より先に保存する。CSV 追記後に落ちると、次回は dedup で除外されて通知が失われるため。
+        pending = outbox.enqueue(outbox.load_pending(outbox_path), new_rows)
+        outbox.save_pending(outbox_path, pending)
+        logger.info("Queued %d record(s) for Discord notification.", len(new_rows))
+
     if new_rows:
         csv_store.append_rows(csv_path, new_rows)
         logger.info("Appended %d new record(s) to %s", len(new_rows), csv_path)
@@ -118,10 +126,17 @@ def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str
 
     state_mod.save_state(state_path, state)
 
-    if notify and new_rows and webhook_url:
-        discord_notify.notify_new_records(webhook_url, new_rows)
-        logger.info("Sent Discord notification for %d new record(s).", len(new_rows))
-    elif notify and new_rows and not webhook_url:
+    if use_outbox:
+        pending = sorted(outbox.load_pending(outbox_path), key=lambda r: r["measured_at_utc"])
+        if pending:
+            try:
+                discord_notify.notify_new_records(webhook_url, pending)
+            except Exception:
+                logger.error("Discord notification failed; %d record(s) remain queued for retry.", len(pending))
+                raise
+            outbox.save_pending(outbox_path, [])
+            logger.info("Sent Discord notification for %d record(s).", len(pending))
+    elif notify and new_rows:
         logger.warning("New records found but DISCORD_WEBHOOK is not configured; skipping notification.")
 
     return new_rows
