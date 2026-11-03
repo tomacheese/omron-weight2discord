@@ -1,6 +1,6 @@
-"""Per-device sync state (last synced measurement timestamp), persisted as JSON.
+"""デバイスごとの同期状態 (最後に同期した測定のタイムスタンプ) を JSON で永続化する。
 
-Keyed by "{deviceSerialID}:{userNumberInDevice}" -> {"last_synced_ms": int}.
+"{deviceSerialID}:{userNumberInDevice}" をキーとし、値は {"last_synced_ms": int}。
 """
 
 from __future__ import annotations
@@ -12,13 +12,13 @@ from typing import Any
 
 
 def device_key(device: dict[str, Any]) -> str:
-    """Build the state map key identifying one device/user profile."""
+    """1 つのデバイス / ユーザープロファイルを識別する状態マップのキーを作る。"""
 
     return f"{device['deviceSerialID']}:{device['userNumberInDevice']}"
 
 
 def load_state(state_path: Path) -> dict[str, Any]:
-    """Load the persisted per-device sync state, or an empty dict if absent."""
+    """永続化済みのデバイスごとの同期状態を読み込む。ファイルが無ければ空 dict。"""
 
     if not state_path.exists():
         return {}
@@ -26,7 +26,7 @@ def load_state(state_path: Path) -> dict[str, Any]:
 
 
 def save_state(state_path: Path, state: dict[str, Any]) -> None:
-    """Atomically persist the per-device sync state as JSON."""
+    """デバイスごとの同期状態を JSON として原子的に保存する。"""
 
     state_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = state_path.with_suffix(".tmp")
@@ -35,17 +35,16 @@ def save_state(state_path: Path, state: dict[str, Any]) -> None:
 
 
 def seed_state_from_csv(existing_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Derive initial per-device last_synced_ms from a pre-existing CSV.
+    """既存の CSV から、デバイスごとの last_synced_ms の初期値を求める。
 
-    Lets a CSV baseline captured before this sync tool existed be treated as
-    already-synced, so the first run under the new tool doesn't re-notify
-    Discord about the entire history.
+    このツールの導入前に取得済みの CSV を同期済みとして扱い、
+    初回実行で履歴全体を Discord へ再通知しないようにする。
     """
 
     state: dict[str, Any] = {}
     for row in existing_rows:
         key = f"{row['device_serial']}:{row['user_number_in_device']}"
-        # measured_at_utc is ISO-8601, e.g. "2019-11-18T08:02:46+00:00"
+        # measured_at_utc は ISO-8601 形式。例: "2019-11-18T08:02:46+00:00"
         ms = int(datetime.fromisoformat(row["measured_at_utc"]).timestamp() * 1000)
         entry = state.setdefault(key, {"last_synced_ms": 0})
         entry["last_synced_ms"] = max(entry["last_synced_ms"], ms)

@@ -1,4 +1,4 @@
-"""One-shot sync: fetch new weight records since last run, append to CSV, notify Discord."""
+"""1 回限りの同期。前回以降の新しい体重レコードを取得し、CSV に追記して Discord へ通知する。"""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ DEFAULT_DATA_DIR = Path(os.environ.get("OMRON_SYNC_DATA_DIR", "data"))
 
 
 def load_env_file(path: Path) -> dict[str, str]:
-    """Minimal .env parser (KEY=VALUE lines, no external dependency)."""
+    """最小限の .env パーサー (KEY=VALUE 形式の行のみ。外部依存なし)。"""
 
     env: dict[str, str] = {}
     if not path.exists():
@@ -32,11 +32,10 @@ def load_env_file(path: Path) -> dict[str, str]:
 
 
 def get_config() -> dict[str, str]:
-    """Resolve config from real environment variables first, falling back to .env.
+    """設定を解決する。実環境変数を優先し、無ければ .env から読む。
 
-    Real env vars take precedence so Compose's `env_file:` (which just sets
-    process env vars) works without any extra parsing on our side; the manual
-    .env parser is there for running this locally without Docker.
+    実環境変数を優先するので、プロセスの環境変数を設定するだけの Compose の `env_file:` が
+    追加のパース処理なしで動く。独自の .env パーサーは、Docker を使わずローカルで動かすためのもの。
     """
 
     base_dir = Path(__file__).resolve().parent.parent
@@ -46,7 +45,7 @@ def get_config() -> dict[str, str]:
 
 
 def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str, Any]]:
-    """Run one sync pass. Returns the list of newly-added rows (empty if nothing new)."""
+    """同期を 1 パス実行する。新たに追加した行のリストを返す (新規が無ければ空)。"""
 
     data_dir = data_dir or DEFAULT_DATA_DIR
     csv_path = data_dir / "weight_data.csv"
@@ -65,8 +64,8 @@ def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str
 
     state = state_mod.load_state(state_path)
     if not state and existing_rows:
-        # First run against a pre-existing CSV baseline: treat it as already
-        # synced instead of re-notifying Discord about the whole history.
+        # 既存の CSV がある状態での初回実行。履歴全体を Discord へ再通知せず、
+        # 同期済みとして扱う。
         state = state_mod.seed_state_from_csv(existing_rows)
         logger.info("Seeded sync state from existing CSV baseline (%d rows).", len(existing_rows))
 
@@ -143,7 +142,7 @@ def run_sync(data_dir: Path | None = None, notify: bool = True) -> list[dict[str
 
 
 def main() -> int:
-    """Configure logging and run a single sync pass."""
+    """ログを設定し、同期を 1 パス実行する。"""
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     init_error_reporting()

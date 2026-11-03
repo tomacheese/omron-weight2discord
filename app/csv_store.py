@@ -1,4 +1,4 @@
-"""CSV persistence for weight records, with a dedup key for defensive de-duplication."""
+"""体重レコードの CSV 永続化と、防御的な重複排除のためのキー。"""
 
 from __future__ import annotations
 
@@ -10,19 +10,18 @@ from app.client import CSV_FIELDS
 
 
 def dedup_key(row: dict[str, Any]) -> tuple[str, str, str]:
-    """Build a dedup key for a row.
+    """行の重複排除キーを作る。
 
-    Cast every field to str: csv.DictReader always yields strings for
-    existing rows, while freshly-parsed rows carry native int/str types from
-    the API, so comparing raw values would never match between the two.
-    A given device/user can't record two weighings at the exact same instant.
+    全フィールドを str にキャストする。csv.DictReader は既存行を必ず文字列で返す一方、
+    新たにパースした行は API 由来の int / str のままなので、生の値のまま比べると
+    両者は一致しない。同じデバイス / ユーザーが同一時刻に 2 回測ることはない。
     """
 
     return (str(row["measured_at_utc"]), str(row["device_serial"]), str(row["user_number_in_device"]))
 
 
 def load_existing(csv_path: Path) -> list[dict[str, Any]]:
-    """Read all existing CSV rows as dicts, or an empty list if the file is absent."""
+    """既存の CSV 行をすべて dict で読み込む。ファイルが無ければ空リスト。"""
 
     if not csv_path.exists():
         return []
@@ -31,7 +30,7 @@ def load_existing(csv_path: Path) -> list[dict[str, Any]]:
 
 
 def append_rows(csv_path: Path, rows: list[dict[str, Any]]) -> None:
-    """Append rows to the CSV, creating it (with header) if it doesn't exist yet."""
+    """行を CSV に追記する。ファイルが無ければヘッダー付きで新規作成する。"""
 
     if not rows:
         return

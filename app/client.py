@@ -1,8 +1,7 @@
-"""
-OMRON connect cloud client (Japan account / API v1, Kii-based backend).
+"""OMRON connect クラウドのクライアント (日本アカウント / API v1、Kii ベースのバックエンド)。
 
-Reverse-engineered from prior-art projects, primarily bugficks/omramin's
-omronconnect.py. See README.md for the full flow writeup and references.
+先行実装、主に bugficks/omramin の omronconnect.py をもとにリバースエンジニアリングしている。
+通信フローの詳細と参考リポジトリは README.md を参照。
 """
 
 from __future__ import annotations
@@ -15,10 +14,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import requests
 
 # ----------------------------------------------------------------------------
-# Region configuration (Japan account -> API v1 / Kii-based backend).
-# appID/appKey are the shared client credentials baked into the official
-# OMRON connect mobile app for this region; not per-user secrets.
-# Source: bugficks/omramin data/region_v1.json ("HK", "JP", "KR", "TW" group).
+# リージョン設定 (日本アカウント -> API v1 / Kii ベースのバックエンド)。
+# appID / appKey は、このリージョン向けの公式 OMRON connect モバイルアプリに
+# 埋め込まれた共有クライアント認証情報であり、ユーザーごとの秘密情報ではない。
+# 出典: bugficks/omramin の data/region_v1.json ("HK", "JP", "KR", "TW" グループ)。
 # ----------------------------------------------------------------------------
 SERVER = "https://data-jp.omronconnect.com/api"
 APP_ID = "1e3ddd17"
@@ -34,7 +33,7 @@ APP_URL = f"{SERVER}/apps/{APP_ID}/server-code"
 DEVICE_CATEGORY_BPM = "0"
 DEVICE_CATEGORY_SCALE = "1"
 
-# ValueType codes used in bodyIndexList (subset relevant to weight/body-composition scales).
+# bodyIndexList で使われる ValueType コード (体重・体組成計に関係するものだけ)。
 VT_KG_FIGURE = "257"
 VT_BODY_FAT_PER_FIGURE = "259"
 VT_BASAL_METABOLISM_FIGURE = "260"
@@ -66,14 +65,14 @@ CSV_FIELDS = [
 
 
 def convert_data_util(value: int, scale: int) -> float:
-    """Reproduce omronconnect.py's convert_data_util (value * 10**scale, decimal-safe)."""
+    """omronconnect.py の convert_data_util を再現する (value * 10**scale を Decimal で誤差なく計算)。"""
 
     factor = Decimal("0.1") ** (-scale) if scale < 0 else Decimal(10) ** scale
     return float(Decimal(value) * factor)
 
 
 def convert_weight_to_kg(weight: float, unit: int) -> float:
-    """Convert a raw weight figure to kilograms based on its unit code."""
+    """単位コードに従って、生の体重値を kg に変換する。"""
 
     if unit == WEIGHT_UNIT_G:
         return weight / 1000
@@ -85,10 +84,10 @@ def convert_weight_to_kg(weight: float, unit: int) -> float:
 
 
 class OmronConnectV1:
-    """Client for the OMRON connect v1 (Kii-based) cloud backend."""
+    """OMRON connect v1 (Kii ベース) クラウドバックエンドのクライアント。"""
 
     def __init__(self) -> None:
-        """Create a session preloaded with the shared app-identity headers."""
+        """アプリ識別用の共通ヘッダーを設定したセッションを作る。"""
 
         self._session = requests.Session()
         self._session.headers.update(
@@ -102,7 +101,7 @@ class OmronConnectV1:
         )
 
     def login(self, email: str, password: str) -> None:
-        """Authenticate and store the bearer token on the session."""
+        """認証し、ベアラートークンをセッションに保持する。"""
 
         r = self._session.post(
             f"{SERVER}/oauth2/token",
@@ -118,7 +117,7 @@ class OmronConnectV1:
         self._session.headers["authorization"] = f"Bearer {access_token}"
 
     def get_registered_devices(self) -> list[dict[str, Any]]:
-        """Return unique devices as dicts: deviceCategory, deviceModel, deviceSerialID, userNumberInDevice."""
+        """重複を除いたデバイスを dict (deviceCategory, deviceModel, deviceSerialID, userNumberInDevice) で返す。"""
 
         sync_list: list[dict[str, Any]] = []
         last_sync_date = 0
@@ -144,7 +143,7 @@ class OmronConnectV1:
                     for dev in model.get("deviceSerialIDList", []) or []:
                         try:
                             if str(dev.get("userNumberInDevice")) == "0":
-                                # profile 0 is the device itself, not a user
+                                # プロファイル 0 はデバイス自体でありユーザーではない
                                 continue
                             key = f"{dev['deviceSerialID']}:{dev['userNumberInDevice']}"
                             devices.setdefault(
@@ -162,16 +161,15 @@ class OmronConnectV1:
         return list(devices.values())
 
     def get_measurements(self, device: dict[str, Any], search_date_from: int = 0) -> list[dict[str, Any]]:
-        """Fetch stored measurements for one device/user from `search_date_from` (ms epoch) onward.
+        """1 つのデバイス / ユーザーについて、`search_date_from` (ミリ秒エポック) 以降の測定値を取得する。
 
-        Pass `search_date_from=0` for full history.
+        `search_date_from=0` を渡すと全履歴を取得する。
 
-        The measureData endpoint paginates in batches of 200 via an opaque
-        `paginationKey` (observed format "<page>/<pageSize>", e.g. "1/200")
-        echoed back as `nextPaginationKey` in `returnedValue`. This isn't
-        documented and isn't handled by the omramin reference implementation,
-        but was confirmed empirically: omitting it silently truncates results
-        to only the first 200 records.
+        measureData エンドポイントは 200 件単位でページングされる。不透明な
+        `paginationKey` (観測した形式は "<page>/<pageSize>"、例: "1/200") が
+        `returnedValue` の `nextPaginationKey` として返るので、次の要求に渡す。
+        これは非公開の挙動で、参照実装の omramin も扱っていないが、実測で確認済み。
+        省略すると結果が黙って最初の 200 件で頭打ちになる。
         """
 
         search_date_to = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
@@ -218,12 +216,12 @@ class OmronConnectV1:
 
 
 def parse_scale_measurement(m: dict[str, Any], device: dict[str, Any]) -> dict[str, Any] | None:
-    """Convert one raw measureData entry into a flat weight/body-composition row."""
+    """measureData の生の 1 エントリを、体重・体組成のフラットな行に変換する。"""
 
     body_index = m.get("bodyIndexList") or {}
 
     def figure(code: str) -> tuple[float, int] | None:
-        """Decode a bodyIndexList entry into (value, subtype), or None if absent."""
+        """bodyIndexList のエントリを (値, subtype) にデコードする。存在しなければ None。"""
 
         entry = body_index.get(code)
         if entry is None:
@@ -238,7 +236,7 @@ def parse_scale_measurement(m: dict[str, Any], device: dict[str, Any]) -> dict[s
     weight = convert_weight_to_kg(weight, weight_unit)
 
     def optional(code: str) -> float | None:
-        """Return only the decoded value for an optional figure, if present."""
+        """任意項目のデコード済みの値だけを返す。存在しなければ None。"""
 
         entry = figure(code)
         return entry[0] if entry else None
@@ -249,8 +247,8 @@ def parse_scale_measurement(m: dict[str, Any], device: dict[str, Any]) -> dict[s
     try:
         dt_local = dt_utc.astimezone(ZoneInfo(tz_name))
     except (ZoneInfoNotFoundError, ValueError):
-        # The API occasionally reports a timezone name the host's tz database
-        # doesn't know; fall back to UTC rather than dropping the record.
+        # API がホストの tz データベースに無いタイムゾーン名を返すことがある。
+        # レコードを捨てずに UTC へフォールバックする。
         dt_local = dt_utc
 
     return {
@@ -267,6 +265,6 @@ def parse_scale_measurement(m: dict[str, Any], device: dict[str, Any]) -> dict[s
         "device_model": device.get("deviceModel"),
         "device_serial": device.get("deviceSerialID"),
         "user_number_in_device": device.get("userNumberInDevice"),
-        # not part of CSV_FIELDS, used internally for state tracking
+        # CSV_FIELDS には含まれない。同期状態の追跡用の内部値
         "_measurement_ms": measurement_ms,
     }

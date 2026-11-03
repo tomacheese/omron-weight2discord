@@ -1,4 +1,4 @@
-"""Discord webhook notification for newly-synced weight records, as embeds."""
+"""新たに同期した体重レコードを embed として Discord webhook で通知する。"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import requests
 MAX_SHOWN_RECORDS = 3
 COLOR = 0x3AA0FF
 
-# (row key, display label, unit)
+# (行のキー, 表示ラベル, 単位)
 METRIC_SPECS: list[tuple[str, str, str]] = [
     ("bmi", "BMI", ""),
     ("body_fat_percentage", "体脂肪率", "%"),
@@ -21,7 +21,7 @@ METRIC_SPECS: list[tuple[str, str, str]] = [
 
 
 def _metric_fields(row: dict[str, Any]) -> list[dict[str, Any]]:
-    """One inline Discord field per available body-composition metric (weight is the title, not a field)."""
+    """利用可能な体組成メトリクスごとに 1 つの inline フィールドを作る (体重はタイトルに使うのでフィールドにしない)。"""
 
     fields = []
     for key, label, unit in METRIC_SPECS:
@@ -33,11 +33,11 @@ def _metric_fields(row: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _build_embed(row: dict[str, Any]) -> dict[str, Any]:
-    """One embed for a single weight record.
+    """体重レコード 1 件分の embed を作る。
 
-    Weight is the headline number, so it's the title; everything else is a
-    field. Time is conveyed via Discord's own `timestamp` field (rendered in
-    each viewer's local time), not written out as text.
+    体重が見出しとなる数値なのでタイトルにし、それ以外はフィールドにする。
+    時刻は文字列で書かず、Discord 自身の `timestamp` フィールドで伝える
+    (閲覧者ごとのローカル時刻で描画される)。
     """
 
     return {
@@ -50,10 +50,10 @@ def _build_embed(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_payload(new_rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build the full webhook payload: one embed per record.
+    """webhook のペイロード全体を作る (レコード 1 件につき 1 embed)。
 
-    Assumes `new_rows` is already sorted ascending (oldest first), as
-    `sync.run_sync` guarantees; this function does not sort it itself.
+    `new_rows` は `sync.run_sync` が保証するとおり昇順 (古い順) にソート済みであることを
+    前提とし、この関数ではソートしない。
     """
 
     shown = new_rows[-MAX_SHOWN_RECORDS:]
@@ -67,14 +67,14 @@ def build_payload(new_rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def send_payload(webhook_url: str, payload: dict[str, Any]) -> None:
-    """Post a webhook payload (embeds, optionally content) to Discord."""
+    """webhook ペイロード (embeds と任意の content) を Discord へ POST する。"""
 
     r = requests.post(webhook_url, json=payload, timeout=10)
     r.raise_for_status()
 
 
 def notify_new_records(webhook_url: str, new_rows: list[dict[str, Any]]) -> None:
-    """Send a Discord notification for newly-synced records; no-op if there are none."""
+    """新たに同期したレコードを Discord へ通知する。レコードが無ければ何もしない。"""
 
     if not new_rows:
         return

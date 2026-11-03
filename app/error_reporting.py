@@ -1,4 +1,4 @@
-"""Shared GlitchTip (Sentry-compatible) error reporting setup for both entrypoints."""
+"""2 つのエントリポイントで共有する GlitchTip (Sentry 互換) のエラー送信設定。"""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import sentry_sdk
 
 
 def init_error_reporting() -> None:
-    """Initialize Sentry SDK if SENTRY_DSN is configured; no-op otherwise.
+    """SENTRY_DSN が設定されていれば Sentry SDK を初期化する。未設定なら何もしない。
 
-    Mirrors the DISCORD_WEBHOOK pattern: an optional setting that's skipped
-    entirely when unset. traces_sample_rate=0 disables performance tracing
-    since this is an always-running sync batch, not a request-serving app.
+    DISCORD_WEBHOOK と同様、未設定ならまるごとスキップする任意設定。
+    常駐する同期バッチでありリクエストを捌くアプリではないため、
+    traces_sample_rate=0 でパフォーマンストレースを無効にしている。
     """
 
     dsn = os.environ.get("SENTRY_DSN")
