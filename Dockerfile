@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Unbuffered stdout so `docker logs` shows sync progress in real time.
+# stdout をバッファリングせず、`docker logs` で同期の進捗をリアルタイムに確認できるようにする。
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     SYNC_INTERVAL_SECONDS=1800 \

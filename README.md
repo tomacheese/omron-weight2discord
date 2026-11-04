@@ -26,6 +26,12 @@ python3 -m app.sync        # 1 回だけ同期する
 python3 -m app.scheduler   # コンテナの CMD と同じくループ実行する
 ```
 
+テストは次のコマンドで実行します。
+
+```bash
+python3 -m unittest discover -s tests -t .
+```
+
 ## 設定 (環境変数)
 
 `.env` に以下の環境変数を設定します。Compose の `env_file:` はこれらをプロセスの環境変数として渡すだけなので、実環境変数が `.env` の値より優先されます。
