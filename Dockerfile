@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 # stdout をバッファリングせず、`docker logs` で同期の進捗をリアルタイムに確認できるようにする。
 ENV PYTHONUNBUFFERED=1 \
