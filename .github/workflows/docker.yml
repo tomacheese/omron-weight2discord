@@ -61,18 +61,35 @@ jobs:
 
             [Actions run を確認して承認してください](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}?pr=${{ github.event.pull_request.number }})
 
+  check-approval-environment:
+    name: Check approval environment
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Check required reviewers
+        if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/environments/fork-pr-build" --jq '.protection_rules | any(.type == "required_reviewers" and (.reviewers | type == "array" and length > 0))' | grep -qx true
+
   approval-gate:
     name: Approval gate
     runs-on: ubuntu-latest
-    needs: post-approval-request
-    # post-approval-request の結果に関わらず常に実行する
-    if: always()
+    needs: [post-approval-request, check-approval-environment]
+    if: always() && needs.check-approval-environment.result == 'success'
     # フォーク PR かつ closed でない場合のみ Environment で手動承認が必要
     environment: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository && github.event.action != 'closed' && 'fork-pr-build' || '' }}
-    permissions: {}
+    permissions:
+      actions: read
     steps:
-      - name: Approval granted
-        run: echo "Approval gate passed"
+      - name: Verify environment approval
+        if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" --jq 'any(.state == "approved" and any(.environments[]; .name == "fork-pr-build"))' | grep -qx true
 
   docker-ci:
     name: Docker CI
