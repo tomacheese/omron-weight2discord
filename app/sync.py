@@ -40,7 +40,7 @@ def get_config() -> dict[str, str]:
 
     base_dir = Path(__file__).resolve().parent.parent
     env = load_env_file(base_dir / ".env")
-    env.update({k: v for k, v in os.environ.items() if k in ("OMRON_CONNECT_EMAIL", "OMRON_CONNECT_PASSWORD", "DISCORD_WEBHOOK")})
+    env.update({k: v for k, v in os.environ.items() if k in ("OMRON_CONNECT_EMAIL", "OMRON_CONNECT_PASSWORD", "DISCORD_WEBHOOK", "SENTRY_DSN")})
     return env
 
 
@@ -145,7 +145,7 @@ def main() -> int:
     """ログを設定し、同期を 1 パス実行する。"""
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    init_error_reporting()
+    init_error_reporting(get_config().get("SENTRY_DSN"))
 
     run_sync()
     return 0
