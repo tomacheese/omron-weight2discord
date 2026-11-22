@@ -12,7 +12,7 @@ import os
 import time
 
 from app.error_reporting import init_error_reporting
-from app.sync import run_sync
+from app.sync import get_config, run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def main() -> int:
     """即座に同期し、以降 INTERVAL_SECONDS ごとに無限に繰り返す。"""
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    init_error_reporting()
+    init_error_reporting(get_config().get("SENTRY_DSN"))
 
     logger.info("Starting scheduler loop (interval=%ds).", INTERVAL_SECONDS)
 
