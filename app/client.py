@@ -31,6 +31,9 @@ USER_AGENT = f"OmronConnect/{OGSC_APP_VERSION}.001 CFNetwork/1335.0.3.4 Darwin/2
 
 APP_URL = f"{SERVER}/apps/{APP_ID}/server-code"
 
+# (接続, 読み取り) の秒数。未指定だと requests は無期限に待つ。
+REQUEST_TIMEOUT = (10, 30)
+
 logger = logging.getLogger(__name__)
 
 DEVICE_CATEGORY_BPM = "0"
@@ -109,6 +112,7 @@ class OmronConnectV1:
         r = self._session.post(
             f"{SERVER}/oauth2/token",
             json={"username": email, "password": password},
+            timeout=REQUEST_TIMEOUT,
         )
         r.raise_for_status()
         resp = r.json()
@@ -129,6 +133,7 @@ class OmronConnectV1:
             r = self._session.post(
                 f"{APP_URL}/versions/current/synchronizeDeviceConfData",
                 json={"countOnlyFlag": 0, "lastSyncDate": last_sync_date},
+                timeout=REQUEST_TIMEOUT,
             )
             r.raise_for_status()
             returned = r.json().get("returnedValue", {}) or {}
@@ -193,7 +198,9 @@ class OmronConnectV1:
             if pagination_key:
                 payload["paginationKey"] = pagination_key
 
-            r = self._session.post(f"{APP_URL}/versions/current/measureData", json=payload)
+            r = self._session.post(
+                f"{APP_URL}/versions/current/measureData", json=payload, timeout=REQUEST_TIMEOUT
+            )
             r.raise_for_status()
             returned = r.json().get("returnedValue")
             if isinstance(returned, list):
