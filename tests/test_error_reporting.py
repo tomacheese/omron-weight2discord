@@ -32,7 +32,9 @@ class SentryDsnTest(unittest.TestCase):
             init_error_reporting(None)
             init.assert_not_called()
             init_error_reporting(ENV_FILE_DSN)
-            init.assert_called_once_with(dsn=ENV_FILE_DSN, traces_sample_rate=0)
+            init.assert_called_once_with(
+                dsn=ENV_FILE_DSN, traces_sample_rate=0, include_local_variables=False
+            )
 
     def test_entrypoints_pass_resolved_dsn(self):
         for module in (sync, scheduler):
