@@ -1,2 +1,2 @@
-requests>=2.31
-sentry-sdk>=2.0
+requests>=2.31,<3
+sentry-sdk>=3.0,<4
